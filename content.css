@@ -59,8 +59,8 @@ html[data-sfs-on] badge-shape.ytBadgeShapeThumbnailDefault {
 /* The pane. content.js sets the --sfs-* variables from the user's settings.
    Anchored by the top edge so it opens downward: the collapsed tag sits where the
    first row appears, and later rows are reached by moving the mouse down. */
-/* The ⋯ strip above the first row is 16px tall plus one row gap; the open pane moves up by that
-   much, so the first row lands under the cursor that was on the collapsed tag. */
+/* Opening moves the pane up by --sfs-home-shift (computed in content.js) so the home row lands under
+   the cursor that was on the collapsed tag. --sfs-nudge keeps it inside the player. */
 #sfs-overlay {
   position: absolute;
   top: calc(var(--sfs-top, 50%) - 14px);
@@ -96,7 +96,7 @@ html[data-sfs-on] badge-shape.ytBadgeShapeThumbnailDefault {
 #sfs-overlay .sfs-rows {
   display: flex;
   flex-direction: column;
-  gap: var(--sfs-row-gap, 28px);
+  gap: var(--sfs-row-gap, 22px);
 }
 
 #sfs-overlay .sfs-row {
@@ -107,7 +107,7 @@ html[data-sfs-on] badge-shape.ytBadgeShapeThumbnailDefault {
 }
 
 #sfs-overlay:hover {
-  top: calc(var(--sfs-top, 50%) - 14px - 16px - var(--sfs-row-gap, 28px));
+  top: calc(var(--sfs-top, 50%) - 14px - var(--sfs-home-shift, 0px) + var(--sfs-nudge, 0px));
   opacity: 1;
 }
 
@@ -134,7 +134,8 @@ html[data-sfs-on] badge-shape.ytBadgeShapeThumbnailDefault {
   padding: 0 calc(10px * var(--sfs-s, 1));
   border-radius: 6px;
   background: var(--sfs-button, #2f3137);
-  font-size: calc(15px * var(--sfs-s, 1));
+  /* Small rows far from home keep readable labels. */
+  font-size: max(10px, calc(15px * var(--sfs-s, 1)));
   white-space: nowrap;
 }
 
@@ -150,7 +151,7 @@ html[data-sfs-on] badge-shape.ytBadgeShapeThumbnailDefault {
 #sfs-overlay .sfs-top {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: var(--sfs-row-gap, 28px);
+  margin-bottom: var(--sfs-row-gap, 22px);
 }
 
 #sfs-overlay .sfs-more {

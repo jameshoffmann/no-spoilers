@@ -5,6 +5,9 @@
   root.setAttribute("data-sfs-on", "");
 
   const FLASH_MS = 800;
+  // Middle of the collapsed tag, measured from the pane's top edge (6px padding + half the 16px tag).
+  const TAG_CENTER = 14;
+  const EDGE_MARGIN = 4;
   const SVG_NS = "http://www.w3.org/2000/svg";
 
   // Feather icons (MIT). Built with createElementNS because YouTube enforces Trusted Types, which blocks innerHTML.
@@ -184,19 +187,27 @@
     tag.className = "sfs-tag";
     tag.textContent = "SB";
 
-    // Each row runs from the biggest rewind to the biggest fast forward, so step size grows away from the center.
+    // One row per jump, shortest at the top: « rewind on the left, fast forward » on the right.
+    const homeIndex = settings.steps.indexOf(settings.home);
     const rows = document.createElement("div");
     rows.className = "sfs-rows";
-    for (const entries of settings.rows) {
-      const sorted = [...entries].sort((a, b) => b.seconds - a.seconds);
+    settings.steps.forEach((seconds, i) => {
+      const scale = SFS.rowScale(i, homeIndex);
       const row = document.createElement("div");
-      row.className = "sfs-row";
-      row.append(...sorted.map((b) => makeSeekButton(-b.seconds, b.size)));
-      row.append(...[...sorted].reverse().map((b) => makeSeekButton(b.seconds, b.size)));
+      row.className = i === homeIndex ? "sfs-row sfs-home" : "sfs-row";
+      row.append(makeSeekButton(-seconds, scale * 100), makeSeekButton(seconds, scale * 100));
       rows.append(row);
-    }
+    });
 
-    // The ⋯ button sits in its own strip at the top right, spaced from the first row like the rows are from each other.
+    // How far the open pane moves up so the home row's middle lands where the collapsed tag's middle was.
+    // Mirrors content.css: 6px padding, the 16px ⋯ strip plus a row gap, then each row (38px * scale) plus a gap.
+    const gap = settings.rowGap;
+    let homeCenter = 6 + 16 + gap;
+    for (let i = 0; i < homeIndex; i++) homeCenter += 38 * SFS.rowScale(i, homeIndex) + gap;
+    homeCenter += (38 * SFS.rowScale(homeIndex, homeIndex)) / 2;
+    overlay.style.setProperty("--sfs-home-shift", `${homeCenter - TAG_CENTER}px`);
+
+    // The ⋯ button sits in its own strip at the top right, one row gap above the first row.
     const more = makeButton("sfs-more");
     more.title = "Menu";
     more.append(icon("more"));
@@ -210,12 +221,31 @@
     controls.append(top, rows);
 
     overlay.append(tag, controls, buildMenu());
-    overlay.addEventListener("mouseleave", () => overlay.classList.remove("sfs-menu-open"));
+    overlay.addEventListener("mouseenter", keepInsidePlayer);
+    overlay.addEventListener("mouseleave", () => {
+      overlay.classList.remove("sfs-menu-open");
+      overlay.style.setProperty("--sfs-nudge", "0px");
+    });
 
     // Keep clicks from reaching the player (play/pause, fullscreen).
     for (const type of ["click", "dblclick", "mousedown", "mouseup", "pointerdown", "pointerup", "wheel"]) {
       overlay.addEventListener(type, (e) => e.stopPropagation());
     }
+  }
+
+  // Rows above the home row can push the open pane past the player's top or bottom edge. Nudge it back
+  // inside; the home row then sits off the cursor, but the cursor stays on the pane so it doesn't collapse.
+  function keepInsidePlayer() {
+    requestAnimationFrame(() => {
+      const host = overlay.parentElement;
+      if (!host) return;
+      const pane = overlay.getBoundingClientRect();
+      const bounds = host.getBoundingClientRect();
+      let nudge = 0;
+      if (pane.bottom > bounds.bottom - EDGE_MARGIN) nudge = bounds.bottom - EDGE_MARGIN - pane.bottom;
+      if (pane.top + nudge < bounds.top + EDGE_MARGIN) nudge = bounds.top + EDGE_MARGIN - pane.top;
+      overlay.style.setProperty("--sfs-nudge", `${nudge}px`);
+    });
   }
 
   function removeOverlay() {

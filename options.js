@@ -8,6 +8,8 @@ const powerLabel = document.getElementById("power-label");
 const resetEl = document.getElementById("reset");
 let resetTimer = 0;
 const rowsEl = document.getElementById("rows");
+const addAmount = document.getElementById("add-amount");
+const addButton = document.getElementById("add-row");
 
 function getPath(path) {
   return path.split(".").reduce((obj, key) => obj[key], settings);
@@ -48,10 +50,30 @@ function clampNumber(input) {
   return Math.min(Math.max(n, min), max);
 }
 
-// Reads a duration field; marks it invalid and returns NaN when it can't be parsed.
+const FORMAT_ERROR = "Enter a valid format, e.g. 20s, 3m, 1h";
+const DUPLICATE_ERROR = "Another row already has this jump";
+
+// Shows (or clears, with an empty message) an error label under a field. In the rows list it goes
+// below the row; elsewhere under the field's label.
+function setFieldError(input, message) {
+  const host = input.closest(".step-row") || input.closest(".row").firstElementChild;
+  let label = host.querySelector(".field-error");
+  input.classList.toggle("invalid", !!message);
+  input.toggleAttribute("aria-invalid", !!message);
+  if (!message) return label?.remove();
+  if (!label) {
+    label = document.createElement("small");
+    label.className = "field-error";
+    label.setAttribute("role", "alert");
+    host.append(label);
+  }
+  label.textContent = message;
+}
+
+// Reads a duration field; shows the format error and returns NaN when it can't be parsed.
 function readStep(input) {
   const seconds = SFS.parseStep(input.value);
-  input.classList.toggle("invalid", !seconds);
+  setFieldError(input, seconds ? "" : FORMAT_ERROR);
   return seconds;
 }
 
@@ -62,7 +84,7 @@ function fillForm() {
     else if (el.type === "radio") el.checked = el.value === value;
     else if (el.dataset.kind === "step") {
       el.value = SFS.formatStep(value);
-      el.classList.remove("invalid");
+      setFieldError(el, "");
     } else el.value = value;
     if (el.type === "range") showRangeValue(el);
   }
@@ -89,77 +111,79 @@ function onFieldInput(e) {
   persist();
 }
 
-// Put clamped numbers and tidied durations back in the field once editing finishes.
+// Put clamped numbers and tidied durations back in the field once editing finishes. An invalid
+// duration stays as typed, with its error, until it's fixed; the last valid value stays saved.
 function onFieldChange(e) {
   const el = e.target;
   if (!el.dataset.key) return;
   if (el.type === "number") el.value = getPath(el.dataset.key);
-  if (el.dataset.kind === "step") {
+  if (el.dataset.kind === "step" && !el.classList.contains("invalid")) {
     el.value = SFS.formatStep(getPath(el.dataset.key));
-    el.classList.remove("invalid");
   }
 }
 
-function renderRows() {
+// Rows are kept sorted; an edited jump re-sorts when the field loses focus, so rows don't jump around mid-typing.
+// highlight: a jump that was just added, briefly marked so you can see where it sorted to.
+function renderRows(highlight) {
   rowsEl.replaceChildren();
-  settings.rows.forEach((entries, r) => {
-    const rowEl = document.getElementById("row-template").content.firstElementChild.cloneNode(true);
-    rowEl.querySelector(".row-title").textContent = `Row ${r + 1}`;
+  const homeIndex = settings.steps.indexOf(settings.home);
+  settings.steps.forEach((seconds, i) => {
+    const rowEl = document.getElementById("step-template").content.firstElementChild.cloneNode(true);
+    rowEl.classList.toggle("is-home", i === homeIndex);
 
-    const removeRow = rowEl.querySelector(".remove-row");
-    removeRow.disabled = settings.rows.length === 1;
-    removeRow.addEventListener("click", () => {
-      settings.rows.splice(r, 1);
+    const home = rowEl.querySelector(".home");
+    home.checked = i === homeIndex;
+    home.addEventListener("change", () => {
+      settings.home = settings.steps[i];
       renderRows();
       persist();
     });
 
-    const entriesEl = rowEl.querySelector(".entries");
-    entries.forEach((entry, i) => {
-      const entryEl = document.getElementById("entry-template").content.firstElementChild.cloneNode(true);
+    rowEl.querySelector(".size-readout").textContent = `${Math.round(SFS.rowScale(i, homeIndex) * 100)}%`;
 
-      const amount = entryEl.querySelector(".amount");
-      amount.value = SFS.formatStep(entry.seconds);
-      amount.addEventListener("input", () => {
-        const seconds = readStep(amount);
-        if (!seconds) return;
-        entry.seconds = seconds;
-        persist();
-      });
-      amount.addEventListener("change", () => {
-        amount.value = SFS.formatStep(entry.seconds);
-        amount.classList.remove("invalid");
-      });
-
-      const size = entryEl.querySelector(".size");
-      size.value = entry.size;
-      showRangeValue(size);
-      size.addEventListener("input", () => {
-        entry.size = +size.value;
-        showRangeValue(size);
-        persist();
-      });
-
-      const remove = entryEl.querySelector(".remove-entry");
-      remove.disabled = entries.length === 1;
-      remove.addEventListener("click", () => {
-        entries.splice(i, 1);
-        renderRows();
-        persist();
-      });
-
-      entriesEl.append(entryEl);
+    const amount = rowEl.querySelector(".amount");
+    amount.value = SFS.formatStep(seconds);
+    amount.addEventListener("input", () => {
+      const value = SFS.parseStep(amount.value);
+      const duplicate = settings.steps.some((n, k) => k !== i && n === value);
+      setFieldError(amount, !value ? FORMAT_ERROR : duplicate ? DUPLICATE_ERROR : "");
+      if (!value || duplicate) return;
+      if (settings.home === settings.steps[i]) settings.home = value;
+      settings.steps[i] = value;
+      persist();
     });
-
-    rowEl.querySelector(".add-button").addEventListener("click", () => {
-      entries.push({ seconds: 10, size: 80 });
+    amount.addEventListener("change", () => {
+      if (amount.classList.contains("invalid")) return;
+      const value = settings.steps[i];
+      settings.steps = SFS.normalizeSteps(settings.steps);
       renderRows();
       persist();
-      rowsEl.children[r].querySelector(".entry:last-child .amount").select();
+      // Typing then tabbing away re-renders the list; keep the edited row visible.
+      rowsEl.children[settings.steps.indexOf(value)]?.scrollIntoView({ block: "nearest" });
+    });
+
+    const remove = rowEl.querySelector(".remove-step");
+    remove.disabled = settings.steps.length === 1;
+    remove.addEventListener("click", () => {
+      const removed = settings.steps.splice(i, 1)[0];
+      if (removed === settings.home) settings.home = SFS.closestStep(settings.steps, removed);
+      renderRows();
+      persist();
     });
 
     rowsEl.append(rowEl);
   });
+
+  const full = settings.steps.length >= SFS.MAX_ROWS;
+  addAmount.disabled = full;
+  addButton.disabled = full;
+  addAmount.placeholder = full ? `Up to ${SFS.MAX_ROWS} rows` : "e.g. 10s";
+
+  const added = rowsEl.children[settings.steps.indexOf(highlight)];
+  if (added) {
+    added.classList.add("just-added");
+    added.scrollIntoView({ block: "nearest" });
+  }
 }
 
 function showPower(on) {
@@ -171,12 +195,23 @@ function showPower(on) {
 document.addEventListener("input", onFieldInput);
 document.addEventListener("change", onFieldChange);
 
-document.getElementById("add-row").addEventListener("click", () => {
-  settings.rows.push([{ seconds: 15, size: 80 }]);
-  renderRows();
+// Type a jump and add it; it drops into its sorted place in the list.
+document.getElementById("add-step").addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (settings.steps.length >= SFS.MAX_ROWS) return;
+  const seconds = SFS.parseStep(addAmount.value);
+  const error = !seconds ? FORMAT_ERROR : settings.steps.includes(seconds) ? DUPLICATE_ERROR : "";
+  setFieldError(addAmount, error);
+  if (error) return;
+  settings.steps = SFS.normalizeSteps([...settings.steps, seconds]);
+  addAmount.value = "";
+  renderRows(seconds);
   persist();
-  rowsEl.lastElementChild.querySelector(".amount").select();
+  if (!addAmount.disabled) addAmount.focus();
 });
+
+// Errors here show on submit; typing again clears them.
+addAmount.addEventListener("input", () => setFieldError(addAmount, ""));
 
 // Two clicks instead of confirm(), which is unreliable in extension popups.
 resetEl.addEventListener("click", async () => {

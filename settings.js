@@ -3,12 +3,11 @@
 globalThis.SFS = (() => {
   const DEFAULTS = {
     showOverlay: true,
-    // Each entry gets a rewind and a fast-forward button. size is a percent of the base button size.
-    rows: [
-      [{ seconds: 60, size: 72 }, { seconds: 30, size: 85 }, { seconds: 5, size: 100 }],
-      [{ seconds: 600, size: 60 }, { seconds: 180, size: 66 }],
-    ],
-    rowGap: 28,
+    // One row per jump amount (seconds), each with a rewind and a fast-forward button, shortest at the top.
+    steps: [30, 60, 180],
+    // The home row is the one that lands under the mouse when the pane opens.
+    home: 60,
+    rowGap: 22,
     side: "right",
     top: 50,
     offset: 12,
@@ -19,6 +18,27 @@ globalThis.SFS = (() => {
     holdRepeat: 300,
   };
 
+  const MAX_ROWS = 7;
+
+  // Button size for a row, relative to the home row: shrinks slowly going up, faster going down.
+  function rowScale(index, homeIndex) {
+    const d = index - homeIndex;
+    if (d < 0) return Math.max(0.6, 0.9 ** -d);
+    return Math.max(0.55, 0.8 ** d);
+  }
+
+  // Positive whole seconds, no duplicates, shortest first, at most MAX_ROWS.
+  function normalizeSteps(steps) {
+    if (!Array.isArray(steps)) return [];
+    const clean = steps.map(Math.round).filter((n) => Number.isFinite(n) && n > 0);
+    return [...new Set(clean)].sort((a, b) => a - b).slice(0, MAX_ROWS);
+  }
+
+  // The home row must be one of the steps; otherwise use the closest one.
+  function closestStep(steps, target) {
+    return steps.reduce((best, n) => (Math.abs(n - target) < Math.abs(best - target) ? n : best), steps[0]);
+  }
+
   function clone(value) {
     return JSON.parse(JSON.stringify(value));
   }
@@ -26,12 +46,10 @@ globalThis.SFS = (() => {
   // Fills in anything missing from stored settings, so older or partial saves still work.
   function merge(stored) {
     const s = { ...clone(DEFAULTS), ...stored };
-    const rows = Array.isArray(s.rows)
-      ? s.rows
-          .map((row) => (Array.isArray(row) ? row.filter((b) => b && b.seconds > 0 && b.size > 0) : []))
-          .filter((row) => row.length)
-      : [];
-    s.rows = rows.length ? rows : clone(DEFAULTS.rows);
+    delete s.rows; // the old grouped-rows layout
+    s.steps = normalizeSteps(s.steps);
+    if (!s.steps.length) s.steps = clone(DEFAULTS.steps);
+    if (!s.steps.includes(s.home)) s.home = closestStep(s.steps, +s.home || DEFAULTS.home);
     return s;
   }
 
@@ -66,5 +84,5 @@ globalThis.SFS = (() => {
     return total > 0 ? total : NaN;
   }
 
-  return { DEFAULTS, clone, merge, load, save, formatStep, parseStep };
+  return { DEFAULTS, MAX_ROWS, rowScale, normalizeSteps, closestStep, clone, merge, load, save, formatStep, parseStep };
 })();

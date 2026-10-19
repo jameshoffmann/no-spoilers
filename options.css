@@ -212,9 +212,23 @@ input.step {
   text-align: center;
 }
 
-input.invalid {
+.field-error {
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* In the rows list the error sits under the jump field, across the rest of the row. */
+.step-row .field-error {
+  grid-column: 2 / -1;
+  margin-top: -4px;
+}
+
+input.invalid,
+input.invalid:focus {
   border-color: var(--danger);
-  outline-color: var(--danger);
+  outline: 2px solid var(--danger);
+  outline-offset: -1px;
 }
 
 .number {
@@ -244,7 +258,7 @@ input.invalid {
   min-width: 44px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
-  text-align: right;
+  text-align: center;
 }
 
 button {
@@ -268,6 +282,12 @@ button.secondary {
 
 button.secondary:hover:not(:disabled) {
   border-color: var(--muted);
+}
+
+/* The label grows to "Click again to reset", so keep the button from being squeezed by the text beside it. */
+#reset {
+  flex: none;
+  white-space: nowrap;
 }
 
 #reset.confirming {
@@ -306,33 +326,69 @@ button.icon:hover:not(:disabled) {
   color: var(--danger);
 }
 
-/* Button rows editor */
-.button-row {
-  margin-bottom: 12px;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
+/* Rows editor */
+.add-step {
+  margin-top: 14px;
 }
 
-.button-row-head {
+.add-step button {
+  grid-column: 3 / -1;
+}
+
+/* A newly added row flashes so you can see where it sorted to. */
+.step-row.just-added {
+  animation: just-added 1.6s ease-out;
+}
+
+@keyframes just-added {
+  from {
+    background: color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+}
+
+.step-row {
+  display: grid;
+  grid-template-columns: 64px 1fr 52px 32px;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 8px;
+  border-radius: 8px;
+}
+
+.step-row.is-home {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.step-head {
+  padding-top: 0;
+  padding-bottom: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+}
+
+.step-row input.step {
+  width: 100%;
+}
+
+.home-pick {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
+  justify-content: center;
+  cursor: pointer;
 }
 
-.entry {
-  display: grid;
-  grid-template-columns: 90px 1fr 32px;
-  align-items: center;
-  gap: 12px;
-  padding: 4px 0;
+.home-pick input {
+  margin: 0;
+  accent-color: var(--accent);
 }
 
-.entry-head {
-  padding: 0;
-  font-size: 12px;
+.size-readout {
   color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 
 /* Switches */

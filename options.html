@@ -32,10 +32,17 @@
     </section>
 
     <section>
-      <h2>Buttons</h2>
-      <p class="hint">Each amount gets a « rewind and a fast-forward » button. Order doesn't matter: in the pane, bigger jumps always sit further from the center. Amounts accept <code>5s</code>, <code>90</code>, <code>1m30s</code>, <code>1h</code>.</p>
-      <div id="rows"></div>
-      <button type="button" class="secondary" id="add-row">+ Add row</button>
+      <h2>Rows</h2>
+      <p class="hint">Your <strong>home</strong> row lands under the mouse when you open the pane.</p>
+      <div class="steps">
+        <div class="step-row step-head" aria-hidden="true"><span>Home</span><span>Jump</span><span>Size</span><span></span></div>
+        <div id="rows"></div>
+      </div>
+      <form class="step-row add-step" id="add-step" novalidate>
+        <span></span>
+        <input type="text" class="step" id="add-amount" placeholder="e.g. 10s" aria-label="New jump" autocomplete="off">
+        <button type="submit" class="secondary" id="add-row">Add</button>
+      </form>
     </section>
 
     <section>
@@ -93,23 +100,12 @@
     </section>
   </main>
 
-  <template id="row-template">
-    <div class="button-row">
-      <div class="button-row-head">
-        <strong class="row-title"></strong>
-        <button type="button" class="link remove-row">Remove row</button>
-      </div>
-      <div class="entry entry-head" aria-hidden="true"><span>Amount</span><span>Button size</span><span></span></div>
-      <div class="entries"></div>
-      <button type="button" class="link add-button">+ Add button</button>
-    </div>
-  </template>
-
-  <template id="entry-template">
-    <div class="entry">
+  <template id="step-template">
+    <div class="step-row">
+      <label class="home-pick" title="Make this the home row"><input type="radio" name="home" class="home" aria-label="Home row"></label>
       <input type="text" class="step amount" aria-label="Jump amount">
-      <span class="range"><input type="range" min="25" max="175" step="1" class="size" aria-label="Button size"><output data-unit="%"></output></span>
-      <button type="button" class="icon remove-entry" aria-label="Remove button" title="Remove button">×</button>
+      <span class="size-readout"></span>
+      <button type="button" class="icon remove-step" aria-label="Remove row" title="Remove row">×</button>
     </div>
   </template>
 

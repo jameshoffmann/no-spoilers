@@ -227,7 +227,7 @@
     // Collapsed state shows only the tag; hovering swaps it for the controls (see content.css).
     const tag = document.createElement("span");
     tag.className = "sfs-tag";
-    tag.textContent = "SB";
+    tag.textContent = "NS!";
 
     // One row per jump, shortest at the top: « rewind on the left, fast forward » on the right.
     const homeIndex = settings.steps.indexOf(settings.home);

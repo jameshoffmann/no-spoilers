@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "No spoilers!",
+  "version": "1.2",
+  "description": "Hides the progress bar and timestamps on SOOP and YouTube videos and adds rewind/fast-forward buttons and arrow-key seeking.",
+  "permissions": ["storage"],
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "No spoilers!: click to turn on/off" },
+  "content_scripts": [
+    {
+      "matches": ["https://*.sooplive.com/*", "https://www.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_start"
+    }
+  ]
+}

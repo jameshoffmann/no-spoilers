@@ -1,0 +1,214 @@
+/* Everything here applies only while the extension is on (content.js sets the attribute). */
+
+/* Player progress bar. visibility keeps the control bar layout and blocks hover previews. */
+html[data-sfs-on] #player .progress {
+  visibility: hidden !important;
+}
+
+/* "00:00:04 / 03:41:33" next to the volume control. */
+html[data-sfs-on] #player .time_display {
+  display: none !important;
+}
+
+/* Durations on thumbnails in the player's side list. */
+html[data-sfs-on] .thumbs-box .time {
+  display: none !important;
+}
+
+/* Duration badges on VOD thumbnails on www.sooplive.com (channel pages, search, directory).
+   The class name ends in a build hash, so match on the stable part. */
+html[data-sfs-on] [class*="Badge-module__vodTime"] {
+  display: none !important;
+}
+
+/* The stream date's hover tooltip shows the start and end time. */
+html[data-sfs-on] .broad_time {
+  pointer-events: none !important;
+}
+
+/* YouTube. Selectors taken from rendered watch, search and channel pages. */
+
+/* Progress bar, including chapter markers, heat map, fine-scrubbing strip and seek text.
+   The descendant rule stops a child with its own visibility: visible from showing through. */
+html[data-sfs-on] #movie_player .ytp-progress-bar-container,
+html[data-sfs-on] #movie_player .ytp-progress-bar-container * {
+  visibility: hidden !important;
+}
+
+/* "0:00 / 3:33", the chapter title next to it, and the time shown in hover and drag previews. */
+html[data-sfs-on] #movie_player .ytp-time-display,
+html[data-sfs-on] #movie_player .ytp-chapter-container,
+html[data-sfs-on] #movie_player .ytp-tooltip-progress-bar-pill,
+html[data-sfs-on] #movie_player .ytp-tooltip-duration,
+html[data-sfs-on] #movie_player .ytp-storyboard-framepreview-timestamp {
+  display: none !important;
+}
+
+/* Durations on end-screen video cards and the end-of-video suggestion grid. */
+html[data-sfs-on] #movie_player .ytp-ce-video-duration,
+html[data-sfs-on] #movie_player .ytp-modern-videowall-still-info-duration {
+  display: none !important;
+}
+
+/* Duration badges on thumbnails (home, search, channel, watch sidebar). On the sampled pages
+   every ThumbnailDefault badge was a duration; "New", live and ad badges use other classes. */
+html[data-sfs-on] badge-shape.ytBadgeShapeThumbnailDefault {
+  display: none !important;
+}
+
+/* Anchored by the top edge so the panel opens downward: the collapsed tag sits where the
+   seconds row appears, and the minutes row is reached by moving the mouse down. */
+#sfs-overlay {
+  position: absolute;
+  top: calc(50% - 14px);
+  right: 12px;
+  z-index: 2147483647;
+  padding: 6px;
+  border-radius: 10px;
+  background: rgba(12, 13, 14, 0.75);
+  font: 13px/1 system-ui, sans-serif;
+  color: #fcfcfd;
+  opacity: 0.5;
+  cursor: default;
+  user-select: none;
+}
+
+#sfs-overlay .sfs-tag {
+  display: block;
+  padding: 2px 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+#sfs-overlay .sfs-controls {
+  display: none;
+  flex-direction: column;
+  gap: 28px;
+}
+
+#sfs-overlay .sfs-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+#sfs-overlay:hover {
+  opacity: 1;
+}
+
+#sfs-overlay:hover .sfs-tag {
+  display: none;
+}
+
+#sfs-overlay:hover .sfs-controls {
+  display: flex;
+}
+
+#sfs-overlay button {
+  min-width: 56px;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: #2f3137;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* Shorter steps get bigger buttons: 5s is the largest, 10m the smallest. */
+#sfs-overlay button.sfs-size-1 { min-width: 64px; height: 38px; font-size: 15px; }
+#sfs-overlay button.sfs-size-2 { min-width: 54px; height: 32px; font-size: 13px; }
+#sfs-overlay button.sfs-size-3 { min-width: 46px; height: 28px; font-size: 12px; padding: 0 8px; }
+#sfs-overlay button.sfs-size-4 { min-width: 42px; height: 26px; font-size: 11px; padding: 0 7px; }
+#sfs-overlay button.sfs-size-5 { min-width: 38px; height: 24px; font-size: 11px; padding: 0 6px; }
+
+#sfs-overlay button:hover {
+  background: #464a53;
+}
+
+#sfs-overlay button:active {
+  background: #0182ff;
+}
+
+#sfs-overlay .sfs-help {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin: 0 4px;
+  border: 1px solid #757b8a;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 600;
+  color: #b4b8c2;
+  cursor: help;
+}
+
+#sfs-overlay .sfs-help:hover {
+  border-color: #fcfcfd;
+  color: #fcfcfd;
+}
+
+/* Opens below the pane, centered on the icon, which sits mid-pane so the list stays inside the player. */
+#sfs-overlay .sfs-help-list {
+  position: absolute;
+  top: calc(100% + 18px);
+  left: 50%;
+  transform: translateX(-50%);
+  /* The icon is only 20px wide, so size to the contents instead of the containing block. */
+  width: max-content;
+  display: none;
+  grid-template-columns: auto auto;
+  gap: 8px 14px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(12, 13, 14, 0.92);
+  font-size: 12px;
+  font-weight: 400;
+  color: #fcfcfd;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+#sfs-overlay .sfs-help:hover .sfs-help-list {
+  display: grid;
+}
+
+#sfs-overlay kbd {
+  justify-self: start;
+  min-width: 22px;
+  padding: 3px 6px;
+  border: 1px solid #464a53;
+  border-radius: 4px;
+  background: #2f3137;
+  font: inherit;
+  text-align: center;
+}
+
+/* Seek feedback in the middle of the player; content.js toggles .sfs-visible. */
+#sfs-flash {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2147483647;
+  transform: translate(-50%, -50%);
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: rgba(12, 13, 14, 0.75);
+  font: 600 20px/1 system-ui, sans-serif;
+  color: #fcfcfd;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+
+#sfs-flash.sfs-visible {
+  opacity: 1;
+  transition: none;
+}

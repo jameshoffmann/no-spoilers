@@ -7,7 +7,7 @@ globalThis.SFS = (() => {
     steps: [30, 60, 180],
     // The home row is the one that lands under the mouse when the pane opens.
     home: 60,
-    rowGap: 14,
+    rowGap: 16,
     side: "right",
     top: 50,
     offset: 12,

@@ -244,6 +244,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local" && changes.enabled) showPower(changes.enabled.newValue);
 });
 
+document.getElementById("version").textContent = `v${chrome.runtime.getManifest().version}`;
+
 chrome.storage.local.get({ enabled: true }, ({ enabled }) => showPower(enabled));
 SFS.load((loaded) => {
   settings = loaded;

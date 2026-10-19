@@ -157,7 +157,7 @@ code {
 }
 
 main {
-  padding-bottom: 48px;
+  padding-bottom: 0;
 }
 
 /* Everything below the header fades while the extension is off, as a reminder that nothing applies. */
@@ -476,11 +476,12 @@ button.icon:hover:not(:disabled) {
 }
 
 
+/* The empty space at the end of the page sits above the link, so the link ends the page. */
 footer {
   display: flex;
   justify-content: center;
   gap: 8px;
-  padding: 4px 0 8px;
+  padding: 52px 0 10px;
   color: var(--muted);
   font-size: 12px;
 }

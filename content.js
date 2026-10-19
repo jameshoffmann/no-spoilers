@@ -89,9 +89,48 @@
     }, FLASH_MS);
   }
 
+  // SOOP's player saves the volume when it starts one of its own seeks and puts that saved volume back
+  // when a seek finishes. Setting currentTime directly skips the save, so SOOP would restore a stale
+  // volume (from page load or its last own seek) while its slider still shows the real one. Remember
+  // the volume before our seeks and undo SOOP's reset for a few seconds afterwards.
+  const VOLUME_GUARD_MS = 3000;
+  let guardedVideo = null;
+  let wantedVolume = 1;
+  let volumeGuardTimer = 0;
+
+  function restoreVolume() {
+    if (guardedVideo.volume !== wantedVolume) guardedVideo.volume = wantedVolume;
+  }
+
+  function endVolumeGuard() {
+    clearTimeout(volumeGuardTimer);
+    guardedVideo?.removeEventListener("volumechange", restoreVolume);
+    guardedVideo = null;
+  }
+
+  function guardVolume(video) {
+    if (isYouTube) return;
+    if (guardedVideo !== video) {
+      endVolumeGuard();
+      guardedVideo = video;
+      wantedVolume = video.volume;
+      video.addEventListener("volumechange", restoreVolume);
+    }
+    clearTimeout(volumeGuardTimer);
+    volumeGuardTimer = setTimeout(endVolumeGuard, VOLUME_GUARD_MS);
+  }
+
+  // The viewer reaching for SOOP's volume control or keys ends the guard, so their change sticks.
+  function onUserVolume(e) {
+    if (e.type === "keydown" ? /^(ArrowUp|ArrowDown|m|M)$/.test(e.key) : e.target.closest?.("#player .volume")) {
+      endVolumeGuard();
+    }
+  }
+
   function seek(seconds) {
     const video = findVideo();
     if (!video || !Number.isFinite(video.duration)) return;
+    guardVolume(video);
     const from = video.currentTime;
     const target = Math.min(Math.max(from + seconds, 0), Math.max(video.duration - 1, 0));
     video.currentTime = target;
@@ -344,6 +383,8 @@
     window.removeEventListener("keydown", onKeyDown, true);
     window.removeEventListener("keyup", onKeyUp, true);
     window.removeEventListener("blur", stopHold);
+    for (const type of ["pointerdown", "wheel", "keydown"]) document.removeEventListener(type, onUserVolume, true);
+    endVolumeGuard();
     removeOverlay();
     overlay = null;
     flash = null;
@@ -351,6 +392,9 @@
 
   window.addEventListener("keydown", onKeyDown, true);
   window.addEventListener("keyup", onKeyUp, true);
+  if (!isYouTube) {
+    for (const type of ["pointerdown", "wheel", "keydown"]) document.addEventListener(type, onUserVolume, true);
+  }
   // A key released while the tab is in the background never sends keyup.
   window.addEventListener("blur", stopHold);
 

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>No spoilers! options</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <header>
+    <h1>No spoilers!</h1>
+    <button type="button" id="power" class="power" aria-pressed="true" aria-describedby="power-label">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>
+      </svg>
+      <span class="visually-hidden">Turn on or off</span>
+    </button>
+    <p id="power-label" class="power-label">On</p>
+  </header>
+  <div id="status" class="status" aria-live="polite"></div>
+
+  <main>
+    <section>
+      <h2>Pane</h2>
+      <label class="row toggle">
+        <span>
+          <strong>Show the pane on videos</strong>
+          <small>When off, timestamps stay hidden and keyboard shortcuts still work.</small>
+        </span>
+        <span class="switch"><input type="checkbox" data-key="showOverlay"><span class="track"></span></span>
+      </label>
+    </section>
+
+    <section>
+      <h2>Buttons</h2>
+      <p class="hint">Each amount gets a « rewind and a fast-forward » button. Order doesn't matter: in the pane, bigger jumps always sit further from the center. Amounts accept <code>5s</code>, <code>90</code>, <code>1m30s</code>, <code>1h</code>.</p>
+      <div id="rows"></div>
+      <button type="button" class="secondary" id="add-row">+ Add row</button>
+    </section>
+
+    <section>
+      <h2>Layout</h2>
+      <div class="row">
+        <span><strong>Side of the player</strong></span>
+        <span class="segmented">
+          <label><input type="radio" name="side" value="left" data-key="side"><span>Left</span></label>
+          <label><input type="radio" name="side" value="right" data-key="side"><span>Right</span></label>
+        </span>
+      </div>
+      <label class="row">
+        <span><strong>Height</strong><small>0% is the top of the player, 100% the bottom.</small></span>
+        <span class="range"><input type="range" min="0" max="100" step="1" data-key="top"><output data-unit="%"></output></span>
+      </label>
+      <label class="row">
+        <span><strong>Distance from the edge</strong></span>
+        <span class="range"><input type="range" min="0" max="300" step="2" data-key="offset"><output data-unit="px"></output></span>
+      </label>
+      <label class="row">
+        <span><strong>Space between rows</strong></span>
+        <span class="range"><input type="range" min="0" max="80" step="2" data-key="rowGap"><output data-unit="px"></output></span>
+      </label>
+      <label class="row">
+        <span><strong>Opacity when not hovered</strong></span>
+        <span class="range"><input type="range" min="0" max="100" step="5" data-key="idleOpacity"><output data-unit="%"></output></span>
+      </label>
+    </section>
+
+    <section>
+      <h2>Keyboard</h2>
+      <label class="row">
+        <span><strong>← / → jump</strong></span>
+        <input type="text" class="step" data-key="keyStep" data-kind="step">
+      </label>
+      <label class="row">
+        <span><strong>Shift + ← / → jump</strong></span>
+        <input type="text" class="step" data-key="shiftKeyStep" data-kind="step">
+      </label>
+      <label class="row">
+        <span><strong>Hold delay</strong><small>How long to hold a key before it starts repeating.</small></span>
+        <span class="number"><input type="number" min="50" max="2000" step="10" data-key="holdDelay"><span>ms</span></span>
+      </label>
+      <label class="row">
+        <span><strong>Repeat interval</strong><small>Time between repeats while holding.</small></span>
+        <span class="number"><input type="number" min="50" max="2000" step="10" data-key="holdRepeat"><span>ms</span></span>
+      </label>
+    </section>
+
+    <section class="danger">
+      <div class="row">
+        <span><strong>Reset to defaults</strong><small>Puts every option back. Doesn't change on/off.</small></span>
+        <button type="button" class="secondary" id="reset">Reset</button>
+      </div>
+    </section>
+  </main>
+
+  <template id="row-template">
+    <div class="button-row">
+      <div class="button-row-head">
+        <strong class="row-title"></strong>
+        <button type="button" class="link remove-row">Remove row</button>
+      </div>
+      <div class="entry entry-head" aria-hidden="true"><span>Amount</span><span>Button size</span><span></span></div>
+      <div class="entries"></div>
+      <button type="button" class="link add-button">+ Add button</button>
+    </div>
+  </template>
+
+  <template id="entry-template">
+    <div class="entry">
+      <input type="text" class="step amount" aria-label="Jump amount">
+      <span class="range"><input type="range" min="25" max="175" step="1" class="size" aria-label="Button size"><output data-unit="%"></output></span>
+      <button type="button" class="icon remove-entry" aria-label="Remove button" title="Remove button">×</button>
+    </div>
+  </template>
+
+  <script src="settings.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

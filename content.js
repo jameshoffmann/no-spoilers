@@ -4,28 +4,30 @@
   // Hide timestamps before the stored setting loads, so they never flash on screen.
   root.setAttribute("data-sfs-on", "");
 
-  // Each row runs from the biggest rewind to the biggest fast forward, so step size grows away from the center.
-  // Buttons shrink as the step grows (see the sfs-size-* rules in content.css).
-  const ROWS = [
-    [60, 30, 5],
-    [600, 180],
-  ];
-  const SIZE_CLASS = { 5: "sfs-size-1", 30: "sfs-size-2", 60: "sfs-size-3", 180: "sfs-size-4", 600: "sfs-size-5" };
-  const KEY_STEP = 5;
-  const SHIFT_KEY_STEP = 60;
-  // Holding a seek key repeats it: the first repeat after HOLD_DELAY_MS, then every HOLD_REPEAT_MS.
-  const HOLD_DELAY_MS = 450;
-  const HOLD_REPEAT_MS = 350;
-  const SHORTCUTS = [
-    ["←", `Rewind ${KEY_STEP}s`],
-    ["→", `Fast forward ${KEY_STEP}s`],
-    ["Shft+←", `Rewind ${SHIFT_KEY_STEP / 60}m`],
-    ["Shft+→", `Fast forward ${SHIFT_KEY_STEP / 60}m`],
-    ["Hold", `Repeat every ${HOLD_REPEAT_MS / 1000}s`],
-  ];
   const FLASH_MS = 800;
+  const SVG_NS = "http://www.w3.org/2000/svg";
+
+  // Feather icons (MIT). Built with createElementNS because YouTube enforces Trusted Types, which blocks innerHTML.
+  const ICONS = {
+    more: [
+      ["circle", { cx: 5, cy: 12, r: 1.5, fill: "currentColor" }],
+      ["circle", { cx: 12, cy: 12, r: 1.5, fill: "currentColor" }],
+      ["circle", { cx: 19, cy: 12, r: 1.5, fill: "currentColor" }],
+    ],
+    settings: [
+      ["circle", { cx: 12, cy: 12, r: 3 }],
+      ["path", { d: "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" }],
+    ],
+    power: [["path", { d: "M18.36 6.64a9 9 0 1 1-12.73 0" }], ["line", { x1: 12, y1: 2, x2: 12, y2: 12 }]],
+    help: [
+      ["circle", { cx: 12, cy: 12, r: 10 }],
+      ["path", { d: "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" }],
+      ["line", { x1: 12, y1: 17, x2: 12.01, y2: 17 }],
+    ],
+  };
 
   let enabled = true;
+  let settings = SFS.merge({});
   let overlay = null;
   let flash = null;
   let flashTotal = 0;
@@ -47,11 +49,24 @@
     return document.querySelector("#videoLayer video#video");
   }
 
-  function formatStep(seconds) {
-    const m = Math.floor(seconds / 60);
-    const s = Math.round(seconds % 60);
-    if (!m) return `${s}s`;
-    return s ? `${m}m ${s}s` : `${m}m`;
+  function icon(name) {
+    const svg = document.createElementNS(SVG_NS, "svg");
+    for (const [k, v] of Object.entries({
+      viewBox: "0 0 24 24",
+      fill: "none",
+      stroke: "currentColor",
+      "stroke-width": 2,
+      "stroke-linecap": "round",
+      "stroke-linejoin": "round",
+    })) {
+      svg.setAttribute(k, v);
+    }
+    for (const [tag, attrs] of ICONS[name]) {
+      const el = document.createElementNS(SVG_NS, tag);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+      svg.append(el);
+    }
+    return svg;
   }
 
   // Shows how far the last seeks moved, adding up clicks or key presses that come in quick succession.
@@ -59,7 +74,7 @@
     if (!flash) return;
     flashTotal = flashTimer ? flashTotal + moved : moved;
     if (flashTotal === 0) flash.textContent = moved === 0 ? "—" : "0s";
-    else flash.textContent = flashTotal < 0 ? `« ${formatStep(-flashTotal)}` : `${formatStep(flashTotal)} »`;
+    else flash.textContent = flashTotal < 0 ? `« ${SFS.formatStep(-flashTotal)}` : `${SFS.formatStep(flashTotal)} »`;
     flash.classList.add("sfs-visible");
     clearTimeout(flashTimer);
     flashTimer = setTimeout(() => {
@@ -77,69 +92,135 @@
     showFlash(Math.round(target - from));
   }
 
-  function makeButton(seconds) {
+  // Keep focus off pane buttons, so Space still reaches the player instead of clicking them again.
+  function makeButton(className) {
     const btn = document.createElement("button");
     btn.type = "button";
-    const step = Math.abs(seconds);
-    btn.className = SIZE_CLASS[step];
-    const label = formatStep(step);
+    btn.className = className;
+    btn.addEventListener("mousedown", (e) => e.preventDefault());
+    return btn;
+  }
+
+  function makeSeekButton(seconds, size) {
+    const btn = makeButton("sfs-seek");
+    btn.style.setProperty("--sfs-s", size / 100);
+    const label = SFS.formatStep(Math.abs(seconds));
     btn.textContent = seconds < 0 ? `« ${label}` : `${label} »`;
     btn.title = `${seconds < 0 ? "Rewind" : "Fast forward"} ${label}`;
-    // Keep focus off the button, so Space still reaches the player instead of clicking it again.
-    btn.addEventListener("mousedown", (e) => e.preventDefault());
     btn.addEventListener("click", () => seek(seconds));
     return btn;
   }
 
-  // A "?" icon; hovering it shows the keyboard shortcuts (see content.css).
-  function buildHelp() {
-    const help = document.createElement("span");
-    help.className = "sfs-help";
-    help.textContent = "?";
+  function shortcuts() {
+    const step = SFS.formatStep(settings.keyStep);
+    const shiftStep = SFS.formatStep(settings.shiftKeyStep);
+    return [
+      ["←", `Rewind ${step}`],
+      ["→", `Fast forward ${step}`],
+      ["Shft+←", `Rewind ${shiftStep}`],
+      ["Shft+→", `Fast forward ${shiftStep}`],
+      ["Hold", `Repeat every ${settings.holdRepeat / 1000}s`],
+    ];
+  }
 
+  function menuItem(iconName, text) {
+    const item = makeButton("sfs-menu-item");
+    const label = document.createElement("span");
+    label.textContent = text;
+    item.append(icon(iconName), label);
+    return item;
+  }
+
+  // The ⋯ menu: options, power, and the keyboard shortcuts (shown beside the menu on hover).
+  function buildMenu() {
+    const menu = document.createElement("div");
+    menu.className = "sfs-menu";
+    const box = document.createElement("div");
+    box.className = "sfs-menu-box";
+
+    const optionsItem = menuItem("settings", "Options");
+    optionsItem.addEventListener("click", () => {
+      overlay.classList.remove("sfs-menu-open");
+      chrome.runtime.sendMessage({ type: "openOptions" });
+    });
+
+    const powerItem = menuItem("power", "Turn off");
+    powerItem.title = "Turn the extension off. Turn it back on from the toolbar icon.";
+    powerItem.addEventListener("click", () => chrome.storage.local.set({ enabled: false }));
+
+    const helpItem = menuItem("help", "Shortcuts");
+    helpItem.classList.add("sfs-help-item");
     const list = document.createElement("div");
     list.className = "sfs-help-list";
-    for (const [key, action] of SHORTCUTS) {
+    for (const [key, action] of shortcuts()) {
       const kbd = document.createElement("kbd");
       kbd.textContent = key;
       const text = document.createElement("span");
       text.textContent = action;
       list.append(kbd, text);
     }
-    help.append(list);
-    return help;
+    helpItem.append(list);
+
+    box.append(optionsItem, powerItem, helpItem);
+    menu.append(box);
+    return menu;
   }
 
   function buildOverlay() {
     overlay = document.createElement("div");
     overlay.id = "sfs-overlay";
+    overlay.dataset.side = settings.side;
+    for (const [name, value] of Object.entries({
+      "--sfs-idle-opacity": settings.idleOpacity / 100,
+      "--sfs-row-gap": `${settings.rowGap}px`,
+      "--sfs-top": `${settings.top}%`,
+      "--sfs-offset": `${settings.offset}px`,
+    })) {
+      overlay.style.setProperty(name, value);
+    }
 
     // Collapsed state shows only the tag; hovering swaps it for the controls (see content.css).
     const tag = document.createElement("span");
     tag.className = "sfs-tag";
     tag.textContent = "SB";
 
-    const controls = document.createElement("div");
-    controls.className = "sfs-controls";
-    ROWS.forEach((steps, i) => {
+    // Each row runs from the biggest rewind to the biggest fast forward, so step size grows away from the center.
+    const rows = document.createElement("div");
+    rows.className = "sfs-rows";
+    for (const entries of settings.rows) {
+      const sorted = [...entries].sort((a, b) => b.seconds - a.seconds);
       const row = document.createElement("div");
       row.className = "sfs-row";
-      row.append(...steps.map((s) => makeButton(-s)));
-      // The last row has a free center slot, so the shortcut help sits there.
-      if (i === ROWS.length - 1) row.append(buildHelp());
-      row.append(...[...steps].reverse().map((s) => makeButton(s)));
-      controls.append(row);
-    });
+      row.append(...sorted.map((b) => makeSeekButton(-b.seconds, b.size)));
+      row.append(...[...sorted].reverse().map((b) => makeSeekButton(b.seconds, b.size)));
+      rows.append(row);
+    }
 
-    overlay.append(tag, controls);
+    // The ⋯ button sits in its own strip at the top right, spaced from the first row like the rows are from each other.
+    const more = makeButton("sfs-more");
+    more.title = "Menu";
+    more.append(icon("more"));
+    more.addEventListener("click", () => overlay.classList.toggle("sfs-menu-open"));
+    const top = document.createElement("div");
+    top.className = "sfs-top";
+    top.append(more);
+
+    const controls = document.createElement("div");
+    controls.className = "sfs-controls";
+    controls.append(top, rows);
+
+    overlay.append(tag, controls, buildMenu());
+    overlay.addEventListener("mouseleave", () => overlay.classList.remove("sfs-menu-open"));
 
     // Keep clicks from reaching the player (play/pause, fullscreen).
     for (const type of ["click", "dblclick", "mousedown", "mouseup", "pointerdown", "pointerup", "wheel"]) {
       overlay.addEventListener(type, (e) => e.stopPropagation());
     }
+  }
 
-    flash = document.createElement("div");
-    flash.id = "sfs-flash";
+  function removeOverlay() {
+    if (overlay) overlay.remove();
+    if (flash) flash.remove();
   }
 
   // The player re-renders when switching videos, so re-attach the overlay when it gets detached.
@@ -147,14 +228,18 @@
   function attachOverlay() {
     if (!enabled) return;
     const host = findPlayer();
-    if (!host) {
+    if (!host) return removeOverlay();
+    if (!flash) {
+      flash = document.createElement("div");
+      flash.id = "sfs-flash";
+    }
+    if (flash.parentElement !== host) host.appendChild(flash);
+    if (!settings.showOverlay) {
       if (overlay) overlay.remove();
-      if (flash) flash.remove();
       return;
     }
     if (!overlay) buildOverlay();
     if (overlay.parentElement !== host) host.appendChild(overlay);
-    if (flash.parentElement !== host) host.appendChild(flash);
   }
 
   let heldKey = null;
@@ -166,8 +251,8 @@
     heldKey = null;
   }
 
-  // ←/→ seeks KEY_STEP, Shift+←/→ seeks SHIFT_KEY_STEP. Captured before the page's own handlers so YouTube does not seek twice.
-  // The browser's own key repeat is swallowed and replaced with a steady HOLD_REPEAT_MS repeat.
+  // ←/→ seeks keyStep, Shift+←/→ seeks shiftKeyStep. Captured before the page's own handlers so YouTube does not seek twice.
+  // The browser's own key repeat is swallowed and replaced with a steady holdRepeat repeat.
   function onKeyDown(e) {
     if (!enabled || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
     if (e.ctrlKey || e.altKey || e.metaKey) return;
@@ -179,13 +264,13 @@
     if (e.repeat && heldKey === e.key) return;
 
     stopHold();
-    const step = (e.shiftKey ? SHIFT_KEY_STEP : KEY_STEP) * (e.key === "ArrowLeft" ? -1 : 1);
+    const step = (e.shiftKey ? settings.shiftKeyStep : settings.keyStep) * (e.key === "ArrowLeft" ? -1 : 1);
     heldKey = e.key;
     seek(step);
     holdTimer = setTimeout(() => {
       seek(step);
-      holdTimer = setInterval(() => seek(step), HOLD_REPEAT_MS);
-    }, HOLD_DELAY_MS);
+      holdTimer = setInterval(() => seek(step), settings.holdRepeat);
+    }, settings.holdDelay);
   }
 
   function onKeyUp(e) {
@@ -198,9 +283,16 @@
     if (on) attachOverlay();
     else {
       stopHold();
-      if (overlay) overlay.remove();
-      if (flash) flash.remove();
+      removeOverlay();
     }
+  }
+
+  // Rebuild the pane from scratch so every setting takes effect immediately.
+  function applySettings(next) {
+    settings = next;
+    if (overlay) overlay.remove();
+    overlay = null;
+    attachOverlay();
   }
 
   window.addEventListener("keydown", onKeyDown, true);
@@ -208,9 +300,12 @@
   // A key released while the tab is in the background never sends keyup.
   window.addEventListener("blur", stopHold);
 
+  SFS.load(applySettings);
   chrome.storage.local.get({ enabled: true }, ({ enabled }) => apply(enabled));
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === "local" && changes.enabled) apply(changes.enabled.newValue);
+    if (area !== "local") return;
+    if (changes.settings) applySettings(SFS.merge(changes.settings.newValue));
+    if (changes.enabled) apply(changes.enabled.newValue);
   });
 
   setInterval(attachOverlay, 1000);

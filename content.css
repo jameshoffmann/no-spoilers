@@ -56,21 +56,29 @@ html[data-sfs-on] badge-shape.ytBadgeShapeThumbnailDefault {
   display: none !important;
 }
 
-/* Anchored by the top edge so the panel opens downward: the collapsed tag sits where the
-   seconds row appears, and the minutes row is reached by moving the mouse down. */
+/* The pane. content.js sets the --sfs-* variables from the user's settings.
+   Anchored by the top edge so it opens downward: the collapsed tag sits where the
+   first row appears, and later rows are reached by moving the mouse down. */
+/* The ⋯ strip above the first row is 16px tall plus one row gap; the open pane moves up by that
+   much, so the first row lands under the cursor that was on the collapsed tag. */
 #sfs-overlay {
   position: absolute;
-  top: calc(50% - 14px);
-  right: 12px;
+  top: calc(var(--sfs-top, 50%) - 14px);
+  right: var(--sfs-offset, 12px);
   z-index: 2147483647;
   padding: 6px;
   border-radius: 10px;
-  background: rgba(12, 13, 14, 0.75);
+  background: var(--sfs-pane, rgba(12, 13, 14, 0.75));
   font: 13px/1 system-ui, sans-serif;
-  color: #fcfcfd;
-  opacity: 0.5;
+  color: var(--sfs-text, #fcfcfd);
+  opacity: var(--sfs-idle-opacity, 0.5);
   cursor: default;
   user-select: none;
+}
+
+#sfs-overlay[data-side="left"] {
+  right: auto;
+  left: var(--sfs-offset, 12px);
 }
 
 #sfs-overlay .sfs-tag {
@@ -83,7 +91,12 @@ html[data-sfs-on] badge-shape.ytBadgeShapeThumbnailDefault {
 #sfs-overlay .sfs-controls {
   display: none;
   flex-direction: column;
-  gap: 28px;
+}
+
+#sfs-overlay .sfs-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sfs-row-gap, 28px);
 }
 
 #sfs-overlay .sfs-row {
@@ -94,6 +107,7 @@ html[data-sfs-on] badge-shape.ytBadgeShapeThumbnailDefault {
 }
 
 #sfs-overlay:hover {
+  top: calc(var(--sfs-top, 50%) - 14px - 16px - var(--sfs-row-gap, 28px));
   opacity: 1;
 }
 
@@ -106,61 +120,111 @@ html[data-sfs-on] badge-shape.ytBadgeShapeThumbnailDefault {
 }
 
 #sfs-overlay button {
-  min-width: 56px;
-  height: 30px;
-  padding: 0 10px;
   border: 0;
-  border-radius: 6px;
-  background: #2f3137;
+  background: transparent;
   color: inherit;
   font: inherit;
-  white-space: nowrap;
   cursor: pointer;
 }
 
-/* Shorter steps get bigger buttons: 5s is the largest, 10m the smallest. */
-#sfs-overlay button.sfs-size-1 { min-width: 64px; height: 38px; font-size: 15px; }
-#sfs-overlay button.sfs-size-2 { min-width: 54px; height: 32px; font-size: 13px; }
-#sfs-overlay button.sfs-size-3 { min-width: 46px; height: 28px; font-size: 12px; padding: 0 8px; }
-#sfs-overlay button.sfs-size-4 { min-width: 42px; height: 26px; font-size: 11px; padding: 0 7px; }
-#sfs-overlay button.sfs-size-5 { min-width: 38px; height: 24px; font-size: 11px; padding: 0 6px; }
-
-#sfs-overlay button:hover {
-  background: #464a53;
+/* --sfs-s is the button's size setting (1 = 100%, the largest default button). */
+#sfs-overlay button.sfs-seek {
+  min-width: calc(64px * var(--sfs-s, 1));
+  height: calc(38px * var(--sfs-s, 1));
+  padding: 0 calc(10px * var(--sfs-s, 1));
+  border-radius: 6px;
+  background: var(--sfs-button, #2f3137);
+  font-size: calc(15px * var(--sfs-s, 1));
+  white-space: nowrap;
 }
 
-#sfs-overlay button:active {
-  background: #0182ff;
+#sfs-overlay button.sfs-seek:hover {
+  background: var(--sfs-hover, #464a53);
 }
 
-#sfs-overlay .sfs-help {
-  position: relative;
+#sfs-overlay button.sfs-seek:active {
+  background: var(--sfs-active, #0182ff);
+}
+
+/* The ⋯ button, top right, one row gap above the first row. */
+#sfs-overlay .sfs-top {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--sfs-row-gap, 28px);
+}
+
+#sfs-overlay .sfs-more {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  margin: 0 4px;
-  border: 1px solid #757b8a;
-  border-radius: 50%;
-  font-size: 11px;
-  font-weight: 600;
-  color: #b4b8c2;
+  width: 28px;
+  height: 16px;
+  border-radius: 4px;
+  opacity: 0.7;
+}
+
+#sfs-overlay .sfs-more:hover,
+#sfs-overlay.sfs-menu-open .sfs-more {
+  background: var(--sfs-hover, #464a53);
+  opacity: 1;
+}
+
+#sfs-overlay .sfs-more svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* The menu drops down from the ⋯ button, over the rows. */
+#sfs-overlay .sfs-menu {
+  position: absolute;
+  top: 26px;
+  right: 6px;
+  display: none;
+}
+
+#sfs-overlay.sfs-menu-open .sfs-menu {
+  display: block;
+}
+
+#sfs-overlay .sfs-menu-box {
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--sfs-pane, rgba(12, 13, 14, 0.75));
+}
+
+#sfs-overlay .sfs-menu-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+#sfs-overlay .sfs-menu-item:hover {
+  background: var(--sfs-hover, #464a53);
+}
+
+#sfs-overlay .sfs-menu-item svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+#sfs-overlay .sfs-help-item {
   cursor: help;
 }
 
-#sfs-overlay .sfs-help:hover {
-  border-color: #fcfcfd;
-  color: #fcfcfd;
-}
-
-/* Opens below the pane, centered on the icon, which sits mid-pane so the list stays inside the player. */
+/* Shortcut list, to the left of the menu, over the pane. */
 #sfs-overlay .sfs-help-list {
   position: absolute;
-  top: calc(100% + 18px);
-  left: 50%;
-  transform: translateX(-50%);
-  /* The icon is only 20px wide, so size to the contents instead of the containing block. */
+  top: 0;
+  right: calc(100% + 10px);
   width: max-content;
   display: none;
   grid-template-columns: auto auto;
@@ -170,13 +234,12 @@ html[data-sfs-on] badge-shape.ytBadgeShapeThumbnailDefault {
   border-radius: 8px;
   background: rgba(12, 13, 14, 0.92);
   font-size: 12px;
-  font-weight: 400;
   color: #fcfcfd;
   white-space: nowrap;
   pointer-events: none;
 }
 
-#sfs-overlay .sfs-help:hover .sfs-help-list {
+#sfs-overlay .sfs-help-item:hover .sfs-help-list {
   display: grid;
 }
 

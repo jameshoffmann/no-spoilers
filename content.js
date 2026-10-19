@@ -4,6 +4,9 @@
   // Hide timestamps before the stored setting loads, so they never flash on screen.
   root.setAttribute("data-sfs-on", "");
 
+  // A previous copy of this script (from before an extension reload or update) may have left its pane behind.
+  for (const el of document.querySelectorAll("#sfs-overlay, #sfs-flash")) el.remove();
+
   const FLASH_MS = 800;
   // Middle of the collapsed tag, measured from the pane's top edge (6px padding + half the 16px tag).
   const TAG_CENTER = 14;
@@ -284,6 +287,7 @@
   // ←/→ seeks keyStep, Shift+←/→ seeks shiftKeyStep. Captured before the page's own handlers so YouTube does not seek twice.
   // The browser's own key repeat is swallowed and replaced with a steady holdRepeat repeat.
   function onKeyDown(e) {
+    if (isOrphaned()) return teardown();
     if (!enabled || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
     if (e.ctrlKey || e.altKey || e.metaKey) return;
     const t = e.target;
@@ -325,6 +329,26 @@
     attachOverlay();
   }
 
+  // After the extension is reloaded or updated, this copy keeps running in already-open tabs but can no
+  // longer hear about setting changes, so its pane would go stale. It removes itself instead; the
+  // background script injects a fresh copy.
+  function isOrphaned() {
+    return !chrome.runtime?.id;
+  }
+
+  let tick = 0;
+
+  function teardown() {
+    clearInterval(tick);
+    stopHold();
+    window.removeEventListener("keydown", onKeyDown, true);
+    window.removeEventListener("keyup", onKeyUp, true);
+    window.removeEventListener("blur", stopHold);
+    removeOverlay();
+    overlay = null;
+    flash = null;
+  }
+
   window.addEventListener("keydown", onKeyDown, true);
   window.addEventListener("keyup", onKeyUp, true);
   // A key released while the tab is in the background never sends keyup.
@@ -338,5 +362,5 @@
     if (changes.enabled) apply(changes.enabled.newValue);
   });
 
-  setInterval(attachOverlay, 1000);
+  tick = setInterval(() => (isOrphaned() ? teardown() : attachOverlay()), 1000);
 })();

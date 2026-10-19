@@ -96,7 +96,7 @@ html[data-sfs-on] badge-shape.ytBadgeShapeThumbnailDefault {
 #sfs-overlay .sfs-rows {
   display: flex;
   flex-direction: column;
-  gap: var(--sfs-row-gap, 22px);
+  gap: var(--sfs-row-gap, 14px);
 }
 
 #sfs-overlay .sfs-row {
@@ -151,7 +151,7 @@ html[data-sfs-on] badge-shape.ytBadgeShapeThumbnailDefault {
 #sfs-overlay .sfs-top {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: var(--sfs-row-gap, 22px);
+  margin-bottom: var(--sfs-row-gap, 14px);
 }
 
 #sfs-overlay .sfs-more {

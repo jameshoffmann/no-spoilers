@@ -1,11 +1,16 @@
-function showBadge(enabled) {
-  chrome.action.setBadgeText({ text: enabled ? "ON" : "" });
-  chrome.action.setBadgeBackgroundColor({ color: "#0182ff" });
+// On/off shows in the toolbar icon itself: full color when on, faded grey when off. (A badge
+// covered too much of the icon.)
+function showState(enabled) {
+  const suffix = enabled ? "" : "-off";
+  const path = Object.fromEntries([16, 32, 48, 128].map((s) => [s, `icons/icon${s}${suffix}.png`]));
+  chrome.action.setIcon({ path });
+  chrome.action.setTitle({ title: enabled ? "No spoilers!" : "No spoilers! (off)" });
+  chrome.action.setBadgeText({ text: "" });
 }
 
-async function syncBadge() {
+async function syncState() {
   const { enabled } = await chrome.storage.local.get({ enabled: true });
-  showBadge(enabled);
+  showState(enabled);
 }
 
 // Start on for new installs. Versions before 1.4 toggled off from the toolbar icon, which now opens
@@ -13,7 +18,7 @@ async function syncBadge() {
 chrome.runtime.onInstalled.addListener(async ({ reason, previousVersion }) => {
   const olderVersion = reason === "update" && parseFloat(previousVersion) < 1.4;
   if (reason === "install" || olderVersion) await chrome.storage.local.set({ enabled: true });
-  syncBadge();
+  syncState();
   // Only after this extension was installed, reloaded or updated: that's when old copies in open tabs
   // are cut off. A Chrome update leaves them running, and injecting then would double them up.
   if (reason === "install" || reason === "update") injectIntoOpenTabs();
@@ -30,11 +35,11 @@ async function injectIntoOpenTabs() {
     chrome.scripting.executeScript({ target, files: cs.js }).catch(() => {});
   }
 }
-chrome.runtime.onStartup.addListener(syncBadge);
+chrome.runtime.onStartup.addListener(syncState);
 
 // On/off can change from the options page or the pane's menu, so follow storage rather than the click.
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes.enabled) showBadge(changes.enabled.newValue);
+  if (area === "local" && changes.enabled) showState(changes.enabled.newValue);
 });
 
 // The pane's "Options" item opens the toolbar popup. Content scripts can't do that themselves, and
